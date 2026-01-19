@@ -1,0 +1,32 @@
+name: Robot Concours Automatique
+
+on:
+  schedule:
+    - cron: '0 8 * * *' # Se lance automatiquement tous les matins à 8h
+  workflow_dispatch: # Permet de le lancer manuellement avec un bouton
+
+jobs:
+  travail-du-robot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Recuperer le code
+        uses: actions/checkout@v3
+
+      - name: Installer Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Installer les outils de recherche
+        run: pip install requests beautifulsoup4
+
+      - name: Lancer la recherche de concours
+        run: python chercher.py
+
+      - name: Enregistrer les resultats sur GitHub
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add concours.html
+          git commit -m "Mise à jour automatique des concours"
+          git push

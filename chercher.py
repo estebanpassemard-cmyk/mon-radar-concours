@@ -1,76 +1,55 @@
 import requests
 from bs4 import BeautifulSoup
-import re
-import random
+import os
 
-def recuperer_concours_directs():
-    """Cherche sur des plateformes de concours directs (sans compte obligatoire)"""
-    # Plateformes utilisées par les marques pour leurs jeux directs
-    sources = [
-        "https://gleam.io/competitions",
+def chercher():
+    # Liste de sites de marques et plateformes directes
+    urls = [
+        "https://www.touslesconcours.fr/nouveaux.php",
         "https://www.vivez-plus-fort.fr/concours/",
-        "https://www.touslesconcours.fr/nouveaux.php"
+        "https://www.ledemondujeu.com/concours-du-jour.html"
     ]
     
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'}
-    resultats = []
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    tous_les_liens = []
 
-    for url in sources:
+    for url in urls:
         try:
-            resp = requests.get(url, headers=headers, timeout=15)
-            soup = BeautifulSoup(resp.text, 'html.parser')
-            domaine = url.split("//")[1].split("/")[0]
+            print(f"Analyse de : {url}")
+            r = requests.get(url, headers=headers, timeout=10)
+            soup = BeautifulSoup(r.text, 'html.parser')
             
-            for l in soup.find_all('a', href=True):
-                titre = l.text.strip()
-                lien = l['href']
+            for a in soup.find_all('a', href=True):
+                titre = a.text.strip()
+                lien = a['href']
                 
-                # FILTRE : On ne garde que les gros lots (Auto, Voyage, Tech)
-                t_low = titre.lower()
-                gros_mots = ["auto", "voiture", "voyage", "séjour", "iphone", "macbook", "pc", "tv", "€", "euro", "virement"]
-                
-                if any(m in t_low for m in gros_mots) and len(titre) > 10:
+                # FILTRE GROS LOTS UNIQUEMENT
+                mots_cles = ["auto", "voiture", "voyage", "iphone", "pc", "tv", "€", "argent"]
+                if any(m in titre.lower() for m in mots_cles) and len(titre) > 10:
                     if not lien.startswith('http'):
                         from urllib.parse import urljoin
                         lien = urljoin(url, lien)
-                    
-                    resultats.append({
-                        "titre": titre,
-                        "lien": lien,
-                        "source": domaine
-                    })
-        except:
+                    tous_les_liens.append((titre, lien))
+        except Exception as e:
+            print(f"Erreur sur {url} ignorée.")
             continue
-    return resultats
 
-def generer_page_radar(liste):
-    html = """<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    # CREATION DU FICHIER HTML SANS BALISES COMPLEXES
+    html_content = """<!DOCTYPE html><html><head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: white; padding: 20px; }
-        .card { background: #1e293b; border-radius: 12px; padding: 20px; margin-bottom: 15px; border-left: 6px solid #fbbf24; }
-        .source { color: #38bdf8; font-size: 0.8rem; font-weight: bold; }
-        .title { display: block; margin: 10px 0; font-size: 1.2rem; font-weight: bold; }
-        .btn { display: block; background: #22c55e; color: white; text-align: center; padding: 15px; border-radius: 8px; text-decoration: none; font-weight: bold; }
-    </style></head><body>
-    <h1 style="text-align:center;">🚀 RADAR DIRECT MARQUES</h1>"""
+        body { font-family: sans-serif; background: #1a1a1a; color: white; padding: 20px; }
+        .box { background: #333; margin-bottom: 15px; padding: 15px; border-radius: 10px; border-left: 5px solid gold; }
+        a { color: #00ff00; text-decoration: none; font-weight: bold; font-size: 1.2em; }
+    </style></head><body><h1>🚀 MON RADAR DIRECT</h1>"""
 
-    for c in liste[:30]:
-        html += f'''<div class="card">
-            <span class="source">🌐 SOURCE : {c['source']}</span>
-            <span class="title">🎁 {c['titre']}</span>
-            <a href="{c['lien']}" target="_blank" class="btn">PARTICIPER DIRECTEMENT</a>
-        </div>'''
+    for t, l in tous_les_liens[:30]:
+        html_content += f'<div class="box"><b>{t}</b><br><br><a href="{l}" target="_blank">CLIQUE ICI POUR JOUER</a></div>'
 
-    html += "</body></html>"
+    html_content += "</body></html>"
+    
     with open("concours.html", "w", encoding="utf-8") as f:
-        f.write(html)
+        f.write(html_content)
 
 if __name__ == "__main__":
-    print("🚀 Démarrage du robot...")
-    data = recuperer_concours_directs()
-    if data:
-        generer_page_radar(data)
-        print(f"✅ Terminé : {len(data)} concours trouvés.")
-    else:
-        print("⚠️ Aucun concours trouvé, vérifiez les filtres.")
+    chercher()

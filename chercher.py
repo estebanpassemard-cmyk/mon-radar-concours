@@ -55,10 +55,10 @@ def mettre_a_jour_fichier(contenu_total):
         f.write(nouvelle_page)
 
 if __name__ == "__main__":
-    # LISTE DES SITES A SURVEILLER
+   # LISTE DES SITES A SURVEILLER
     sites = [
         {"url": "https://www.toutgagner.com/nouveaux-concours.html", "selecteur": "a"},
-        {"url": "https://www.ledemondujeu.com/concours-du-jour.html", "selecteur": ".liste-concours a"}
+        {"url": "https://www.ledemondujeu.com/concours-du-jour.html", "selecteur": "a"} # On cherche tous les liens
     ]
     
     resultat_final = ""

@@ -10,7 +10,6 @@ def recuperer_concours():
         soup = BeautifulSoup(response.text, 'html.parser')
         html_genere = ""
         liens = soup.find_all('a', href=True)
-        vu = set()
         compteur = 0
         for l in liens:
             titre = l.text.strip()
@@ -18,46 +17,35 @@ def recuperer_concours():
                 lien_reel = l['href']
                 if not lien_reel.startswith('http'): 
                     lien_reel = "https://www.toutgagner.com" + lien_reel
-                if lien_reel not in vu:
-                    html_genere += f"""
-                    <div style="border-bottom: 1px solid #eee; padding: 15px; margin-bottom: 10px;">
-                        <strong style="font-size: 18px;">🎁 {titre}</strong><br>
-                        <a href="{lien_reel}" target="_blank" style="color: #28a745; font-weight: bold; text-decoration: none;">Participer maintenant</a>
-                    </div>"""
-                    vu.add(lien_reel)
-                    compteur += 1
+                html_genere += f'<div style="border-bottom:1px solid #eee;padding:10px;"><strong>🎁 {titre}</strong><br><a href="{lien_reel}" target="_blank">Participer</a></div>'
+                compteur += 1
         return html_genere
-    except Exception as e:
-        return f"<p>Erreur de recherche : {e}</p>"
+    except:
+        return "<p>Erreur de recherche</p>"
 
 def mettre_a_jour_fichier(contenu_neuf):
-    # On définit les balises en dur pour éviter l'erreur "empty separator"
-    balise_debut = ""
-    balise_fin = ""
-    
+    # On vérifie si le fichier existe
     if not os.path.exists("concours.html"):
-        print("Erreur : Le fichier concours.html est introuvable !")
+        print("Fichier concours.html introuvable")
         return
 
     with open("concours.html", "r", encoding="utf-8") as f:
         page = f.read()
 
-    if balise_debut not in page or balise_fin not in page:
-        print("Erreur : Les balises sont absentes de concours.html")
+    # Si les balises ne sont pas là, on les affiche pour comprendre pourquoi
+    if "" not in page:
+        print("BALISE DEBUT MANQUANTE DANS LE HTML")
         return
 
-    # Découpage propre
-    parties = page.split(balise_debut)
-    debut_du_site = parties[0]
-    reste = parties[1].split(balise_fin)
-    fin_du_site = reste[1]
+    # RECONSTRUCTION SIMPLE
+    debut_site = page.split("")[0]
+    fin_site = page.split("")[1]
 
-    # Reconstruction
-    page_finale = debut_du_site + balise_debut + contenu_neuf + balise_fin + fin_du_site
+    page_finale = debut_site + "" + contenu_neuf + "" + fin_site
 
     with open("concours.html", "w", encoding="utf-8") as f:
         f.write(page_finale)
-    print("Mise à jour réussie !")
+    print("Succès !")
 
 if __name__ == "__main__":
     resultats = recuperer_concours()

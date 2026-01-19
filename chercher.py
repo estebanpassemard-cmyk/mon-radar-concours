@@ -1,109 +1,83 @@
 import requests
 from bs4 import BeautifulSoup
 import random
-from urllib.parse import urljoin
+import re
+from urllib.parse import urljoin, unquote
 
-def recuperer_details_concours(url_referencement):
-    """Va sur la page du site de concours pour trouver le vrai lien et la description"""
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+def extraire_reponse_et_lots(url_page):
+    """Analyse la page source pour trouver la réponse et les lots"""
+    headers = {'User-Agent': 'Mozilla/5.0'}
     try:
-        resp = requests.get(url_referencement, headers=headers, timeout=5)
+        resp = requests.get(url_page, headers=headers, timeout=5)
         soup = BeautifulSoup(resp.text, 'html.parser')
+        texte_complet = soup.get_text()
         
-        # On cherche un résumé (souvent dans les balises <p> ou les meta descriptions)
-        description = "Cliquez pour découvrir le lot..."
-        p_tags = soup.find_all('p')
-        for p in p_tags:
-            texte = p.text.strip()
-            if len(texte) > 30 and len(texte) < 200:
-                description = texte
-                break
-        
-        return description
+        # IA Simplifiée : Recherche de la réponse
+        reponse = "Pas de question détectée"
+        match = re.search(r'(?:Rép|Réponse|R1)\s*[:\-]\s*([^\n\.]+)', texte_complet, re.IGNORECASE)
+        if match:
+            reponse = match.group(1).strip()
+            
+        return reponse
     except:
-        return "Pas de description disponible."
+        return "Non trouvée"
+
+def est_un_gros_lot(titre):
+    """Filtre de valeur pour ne garder que le premium"""
+    t = titre.lower()
+    gros_lots = ["tv", "télévision", "auto", "voiture", "voyage", "séjour", "iphone", "macbook", "ordinateur", "pc", "argent", "chèque", "€", "euro", "virement", "cuisine", "ps5", "xbox"]
+    petits_lots = ["cinéma", "place", "dvd", "livre", "goodies", "échantillon", "entrée", "lot de"]
+    
+    # Si un petit mot est présent, on jette (sauf si un gros mot est aussi là)
+    if any(p in t for p in petits_lots) and not any(g in t for g in gros_lots):
+        return False
+    # On garde si un gros mot est présent
+    return any(g in t for g in gros_lots)
 
 def recuperer_concours_site(url):
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+    headers = {'User-Agent': 'Mozilla/5.0'}
     concours_trouves = []
     try:
         response = requests.get(url, headers=headers, timeout=10)
         soup = BeautifulSoup(response.text, 'html.parser')
-        source_nom = url.split("//")[1].split("/")[0].replace("www.", "")
         
         for l in soup.find_all('a', href=True):
             titre = l.text.strip()
-            if "concours" in titre.lower() or "gagner" in titre.lower():
-                if len(titre) > 15:
-                    lien_propre = urljoin(url, l['href'])
-                    # On ne récupère le résumé que pour les 10 premiers de chaque site pour ne pas être trop lent
-                    desc = "Chargement du résumé..."
-                    concours_trouves.append({
-                        "titre": titre, 
-                        "lien": lien_propre, 
-                        "source": source_nom,
-                        "desc": desc
-                    })
+            if est_un_gros_lot(titre):
+                lien_brut = urljoin(url, l['href'])
+                # Extraction du lien direct si possible
+                match = re.search(r'(?:url|dest|link)=([^&]+)', lien_brut)
+                lien_final = unquote(match.group(1)) if match else lien_brut
+                
+                concours_trouves.append({"titre": titre, "lien": lien_final, "source": url.split("//")[1][:15]})
         return concours_trouves
-    except:
-        return []
+    except: return []
 
-def generer_page_complete(liste_concours):
-    random.shuffle(liste_concours)
-    
-    html = """<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mon Radar Cadeaux Pro</title>
+def generer_page(liste):
+    random.shuffle(liste)
+    html = """<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: 'Segoe UI', sans-serif; max-width: 800px; margin: auto; padding: 20px; background-color: #f0f2f5; }
-        h1 { text-align: center; color: #1a73e8; }
-        .card { background: white; padding: 20px; margin-bottom: 15px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-left: 5px solid #1a73e8; }
-        .titre { font-size: 1.2em; color: #333; display: block; margin-bottom: 8px; font-weight: bold; }
-        .description { color: #555; font-size: 0.95em; margin-bottom: 15px; font-style: italic; background: #f9f9f9; padding: 10px; border-radius: 5px; }
-        .source { color: #999; font-size: 0.8em; }
-        .btn { display: block; text-align: center; background: #28a745; color: white; padding: 12px; border-radius: 8px; text-decoration: none; font-weight: bold; transition: background 0.3s; }
-        .btn:hover { background: #218838; }
-    </style>
-</head>
-<body>
-    <h1>🎯 Radar à Concours Pro</h1>"""
+        body { font-family: sans-serif; background: #121212; color: white; padding: 15px; }
+        .card { background: #1e1e1e; border-radius: 12px; padding: 15px; margin-bottom: 15px; border: 1px solid #333; }
+        .titre { color: #f1c40f; font-size: 1.1em; font-weight: bold; }
+        .reponse { background: #2c3e50; padding: 8px; border-radius: 5px; margin: 10px 0; color: #ff4757; font-weight: bold; border-left: 4px solid #ff4757; }
+        .btn { display: block; background: #27ae60; color: white; text-align: center; padding: 12px; border-radius: 8px; text-decoration: none; }
+    </style></head><body><h1>💎 Radar Gros Lots & IA</h1>"""
 
-    vu = set()
-    compteur = 0
-    for c in liste_concours:
-        if c['lien'] not in vu and compteur < 40:
-            # Pour chaque concours, on essaie d'aller chercher le résumé
-            description_reelle = recuperer_details_concours(c['lien'])
-            
-            html += f'''
-    <div class="card">
-        <span class="titre">🎁 {c['titre']}</span>
-        <div class="description">"{description_reelle}"</div>
-        <span class="source">Source : {c['source']}</span><br><br>
-        <a href="{c['lien']}" target="_blank" class="btn">PARTICIPER DIRECTEMENT</a>
-    </div>'''
-            vu.add(c['lien'])
-            compteur += 1
-
+    for c in liste[:30]:
+        rep = extraire_reponse_et_lots(c['lien'])
+        html += f'''<div class="card">
+            <div class="titre">💰 {c['titre']}</div>
+            <div class="reponse">💡 IA - Réponse probable : {rep}</div>
+            <small>Source : {c['source']}</small><br><br>
+            <a href="{c['lien']}" target="_blank" class="btn">PARTICIPER MAINTENANT</a>
+        </div>'''
+    
     html += "</body></html>"
-
-    with open("concours.html", "w", encoding="utf-8") as f:
-        f.write(html)
+    with open("concours.html", "w", encoding="utf-8") as f: f.write(html)
 
 if __name__ == "__main__":
-    urls = [
-        "https://www.toutgagner.com/nouveaux-concours.html",
-        "https://www.ledemondujeu.com/concours-du-jour.html",
-        "https://www.concours-du-net.com/nouveaux-concours.php"
-    ]
-    
+    sites = ["https://www.toutgagner.com/nouveaux-concours.html", "https://www.ledemondujeu.com/concours-du-jour.html", "https://www.concours-du-net.com/nouveaux-concours.php"]
     tous = []
-    for u in urls:
-        print(f"Extraction : {u}")
-        tous.extend(recuperer_concours_site(u))
-    
-    if tous:
-        generer_page_complete(tous)
+    for s in sites: tous.extend(recuperer_concours_site(s))
+    if tous: generer_page(tous)

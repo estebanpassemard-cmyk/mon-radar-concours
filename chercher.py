@@ -18,34 +18,39 @@ def recuperer_concours():
                 if not lien_reel.startswith('http'): 
                     lien_reel = "https://www.toutgagner.com" + lien_reel
                 html_genere += f'<div style="border-bottom:1px solid #eee;padding:10px;"><strong>🎁 {titre}</strong><br><a href="{lien_reel}" target="_blank">Participer</a></div>'
-                compteur += 1
+                compteur = compteur + 1
         return html_genere
     except:
-        return "<p>Erreur de recherche</p>"
+        return "Erreur de recherche"
 
 def mettre_a_jour_fichier(contenu_neuf):
+    # Sécurité absolue : on définit les balises ici
+    D = ""
+    F = ""
+    
     if not os.path.exists("concours.html"):
+        print("Fichier concours.html absent")
         return
 
     with open("concours.html", "r", encoding="utf-8") as f:
-        page = f.read()
+        page_complete = f.read()
 
-    # SOLUTION RADICALE : On écrit les balises directement dans le split
-    # On vérifie d'abord manuellement si elles sont là
-    if "" not in page:
-        print("BALISE MANQUANTE DANS LE HTML")
+    if D not in page_complete or F not in page_complete:
+        print("BALISES ABSENTES DU HTML")
         return
 
-    # Découpage direct (sans variables)
-    debut_site = page.split("")[0]
-    fin_site = page.split("")[1]
-
-    # Reconstruction
-    page_finale = debut_site + "" + contenu_neuf + "" + fin_site
+    # Découpage par étape
+    index_debut = page_complete.find(D) + len(D)
+    index_fin = page_complete.find(F)
+    
+    partie_haute = page_complete[:index_debut]
+    partie_basse = page_complete[index_fin:]
+    
+    nouvelle_page = partie_haute + "\n" + contenu_neuf + "\n" + partie_basse
 
     with open("concours.html", "w", encoding="utf-8") as f:
-        f.write(page_finale)
-    print("Mise à jour réussie !")
+        f.write(nouvelle_page)
+    print("REUSSITE")
 
 if __name__ == "__main__":
     resultats = recuperer_concours()

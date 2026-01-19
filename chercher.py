@@ -24,35 +24,26 @@ def recuperer_concours():
         return "<p>Erreur de recherche</p>"
 
 def mettre_a_jour_fichier(contenu_neuf):
-    nom_fichier = "concours.html"
-    # ICI : On définit bien les séparateurs
-    marqueur_debut = ""
-    marqueur_fin = ""
-
-    if not os.path.exists(nom_fichier):
-        print("Fichier introuvable")
+    if not os.path.exists("concours.html"):
         return
 
-    with open(nom_fichier, "r", encoding="utf-8") as f:
+    with open("concours.html", "r", encoding="utf-8") as f:
         page = f.read()
 
-    if marqueur_debut not in page:
-        print("Le marqueur DEBUT est introuvable dans le HTML")
+    # SOLUTION RADICALE : On écrit les balises directement dans le split
+    # On vérifie d'abord manuellement si elles sont là
+    if "" not in page:
+        print("BALISE MANQUANTE DANS LE HTML")
         return
 
-    # DECOUPAGE
-    # On coupe au marqueur de début
-    parties = page.split(marqueur_debut)
-    debut_site = parties[0]
-    
-    # On coupe le reste au marqueur de fin
-    suite = parties[1].split(marqueur_fin)
-    fin_site = suite[1]
+    # Découpage direct (sans variables)
+    debut_site = page.split("")[0]
+    fin_site = page.split("")[1]
 
-    # RECONSTRUCTION
-    page_finale = debut_site + marqueur_debut + contenu_neuf + marqueur_fin + fin_site
+    # Reconstruction
+    page_finale = debut_site + "" + contenu_neuf + "" + fin_site
 
-    with open(nom_fichier, "w", encoding="utf-8") as f:
+    with open("concours.html", "w", encoding="utf-8") as f:
         f.write(page_finale)
     print("Mise à jour réussie !")
 
